@@ -114,6 +114,32 @@ func TestRename(t *testing.T) {
 	}
 }
 
+func TestRemove(t *testing.T) {
+	for _, fs := range Fss {
+		path := testDir + "/" + testName
+		fs.MkdirAll(testDir, 0777) // Just in case.
+		fs.Create(path)
+
+		err := fs.Remove(path)
+		if err != nil {
+			t.Errorf("%v: Remove() failed: %v", fs.Name(), err)
+			continue
+		}
+
+		_, err = fs.Stat(path)
+		if !os.IsNotExist(err) {
+			t.Errorf("%v: Remove() didn't remove file", fs.Name())
+			continue
+		}
+
+		// Deleting non-existent file should raise error
+		err = fs.Remove(path)
+		if !os.IsNotExist(err) {
+			t.Errorf("%v: Remove() didn't raise error for non-existent file", fs.Name())
+		}
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	for _, fs := range Fss {
 		f := newFile("TestTruncate", fs, t)
