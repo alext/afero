@@ -167,7 +167,28 @@ func (m *MemMapFs) Open(name string) (File, error) {
 }
 
 func (m *MemMapFs) OpenFile(name string, flag int, perm os.FileMode) (File, error) {
-	return m.Open(name)
+	file, err := m.Open(name)
+	if os.IsNotExist(err) && (flag&os.O_CREATE > 0) {
+		file, err = m.Create(name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if flag&os.O_APPEND > 0 {
+		_, err = file.Seek(0, os.SEEK_END)
+		if err != nil {
+			file.Close()
+			return nil, err
+		}
+	}
+	if flag&os.O_TRUNC > 0 && flag&(os.O_RDWR|os.O_WRONLY) > 0 {
+		err = file.Truncate(0)
+		if err != nil {
+			file.Close()
+			return nil, err
+		}
+	}
+	return file, nil
 }
 
 func (m *MemMapFs) Remove(name string) error {

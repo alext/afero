@@ -69,6 +69,50 @@ func TestRead0(t *testing.T) {
 	}
 }
 
+func TestOpenFile(t *testing.T) {
+	for _, fs := range Fss {
+		path := testDir + "/" + testName
+		fs.MkdirAll(testDir, 0777) // Just in case.
+		fs.Remove(path)            // Just in case.
+		defer fs.Remove(path)
+
+		f, err := fs.OpenFile(path, os.O_RDWR|os.O_CREATE, 0600)
+		if err != nil {
+			t.Error(fs.Name(), "OpenFile (O_CREATE) failed:", err)
+			continue
+		}
+		io.WriteString(f, "initial")
+		f.Close()
+
+		f, err = fs.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			t.Error(fs.Name(), "OpenFile (O_APPEND) failed:", err)
+			continue
+		}
+		io.WriteString(f, "|append")
+		f.Close()
+
+		f, err = fs.OpenFile(path, os.O_RDONLY, 0600)
+		contents, _ := ioutil.ReadAll(f)
+		expectedContents := "initial|append"
+		if string(contents) != expectedContents {
+			t.Errorf("%v: appending, expected '%v', got: '%v'", fs.Name(), expectedContents, string(contents))
+		}
+		f.Close()
+
+		f, err = fs.OpenFile(path, os.O_RDWR|os.O_TRUNC, 0600)
+		if err != nil {
+			t.Error(fs.Name(), "OpenFile (O_TRUNC) failed:", err)
+			continue
+		}
+		contents, _ = ioutil.ReadAll(f)
+		if string(contents) != "" {
+			t.Errorf("%v: expected truncated file, got: '%v'", fs.Name(), string(contents))
+		}
+		f.Close()
+	}
+}
+
 func TestMemFileRead(t *testing.T) {
 	f := MemFileCreate("testfile")
 	f.WriteString("abcd")
